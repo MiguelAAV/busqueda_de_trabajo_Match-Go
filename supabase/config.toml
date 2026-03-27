@@ -1,0 +1,5 @@
+# Supabase Edge Functions Configuration
+projectId = "matchgo-chile"
+name = "matchgo-backend"
+
+[settings]
