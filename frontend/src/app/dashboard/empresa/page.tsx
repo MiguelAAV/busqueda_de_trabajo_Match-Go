@@ -1,10 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { Card, Button, Spinner } from '@/components/ui'
+import { Card, Button, Spinner, Badge } from '@/components/ui'
 import { ofertaApi } from '@/lib/api'
 
 export default function DashboardEmpresa() {
@@ -27,7 +27,7 @@ export default function DashboardEmpresa() {
         setStats({
           total: data?.length || 0,
           activas: data?.filter((o: any) => o.estado === 'ABIERTA').length || 0,
-          postulaciones: 0,
+          postulaciones: data?.reduce((acc: number, o: any) => acc + (o._count?.postulaciones || 0), 0) || 0,
         })
       } catch (err) {
         console.error(err)
@@ -38,91 +38,159 @@ export default function DashboardEmpresa() {
     loadData()
   }, [router])
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut()
-    router.push('/auth/login')
+  const getEstadoBadge = (estado: string) => {
+    const config = {
+      ABIERTA: { variant: 'success' as const, label: 'Activa' },
+      CERRADA: { variant: 'error' as const, label: 'Cerrada' },
+      CON_CANDIDATOS: { variant: 'warning' as const, label: 'Con Candidatos' },
+      COMPLETADA: { variant: 'default' as const, label: 'Completada' },
+    }
+    return config[estado as keyof typeof config] || { variant: 'default', label: estado }
   }
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Spinner />
+        <Spinner size="lg" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-xl font-bold text-primary-600">Match&Go</h1>
-          <nav className="flex gap-4 items-center">
-            <Link href="/dashboard/empresa/ofertas" className="text-gray-600 hover:text-primary-500">
-              Mis Ofertas
-            </Link>
-            <Link href="/dashboard/empresa/perfil" className="text-gray-600 hover:text-primary-500">
-              Mi Perfil
-            </Link>
-            <button onClick={handleSignOut} className="text-gray-600 hover:text-red-500">
-              Cerrar Sesión
-            </button>
-          </nav>
-        </div>
-      </header>
+    <div>
+      {/* Welcome */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900">Bienvenido</h1>
+        <p className="text-gray-600 mt-1">Aquí está el resumen de tu actividad</p>
+      </div>
 
-      <main className="max-w-7xl mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <Card>
-            <h3 className="text-gray-500 text-sm">Total Ofertas</h3>
-            <p className="text-3xl font-bold text-gray-900">{stats.total}</p>
-          </Card>
-          <Card>
-            <h3 className="text-gray-500 text-sm">Ofertas Activas</h3>
-            <p className="text-3xl font-bold text-green-600">{stats.activas}</p>
-          </Card>
-          <Card>
-            <h3 className="text-gray-500 text-sm">Postulaciones</h3>
-            <p className="text-3xl font-bold text-blue-600">{stats.postulaciones}</p>
-          </Card>
-        </div>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <Card className="hover:shadow-lg transition-shadow">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gray-500 text-sm">Total Ofertas</p>
+              <p className="text-4xl font-bold text-gray-900 mt-2">{stats.total}</p>
+            </div>
+            <div className="w-14 h-14 bg-blue-100 rounded-full flex items-center justify-center text-2xl">
+              📋
+            </div>
+          </div>
+        </Card>
+        
+        <Card className="hover:shadow-lg transition-shadow">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gray-500 text-sm">Ofertas Activas</p>
+              <p className="text-4xl font-bold text-green-600 mt-2">{stats.activas}</p>
+            </div>
+            <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center text-2xl">
+              ✅
+            </div>
+          </div>
+        </Card>
+        
+        <Card className="hover:shadow-lg transition-shadow">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gray-500 text-sm">Postulaciones</p>
+              <p className="text-4xl font-bold text-purple-600 mt-2">{stats.postulaciones}</p>
+            </div>
+            <div className="w-14 h-14 bg-purple-100 rounded-full flex items-center justify-center text-2xl">
+              👥
+            </div>
+          </div>
+        </Card>
+      </div>
 
+      {/* Quick Actions */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <Link href="/dashboard/empresa/ofertas/nueva">
+          <Card className="cursor-pointer hover:border-primary-500 border-2 border-transparent transition-all">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center text-xl">
+                ➕
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">Publicar Nueva Oferta</h3>
+                <p className="text-sm text-gray-500">Encuentra trabajadores temporales</p>
+              </div>
+            </div>
+          </Card>
+        </Link>
+        
+        <Link href="/dashboard/empresa/candidatos">
+          <Card className="cursor-pointer hover:border-primary-500 border-2 border-transparent transition-all">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center text-xl">
+                🔍
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">Buscar Candidatos</h3>
+                <p className="text-sm text-gray-500">Explora trabajadores disponibles</p>
+              </div>
+            </div>
+          </Card>
+        </Link>
+      </div>
+
+      {/* Recent Offers */}
+      <div>
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold">Mis Ofertas Recientes</h2>
-          <Link href="/dashboard/empresa/ofertas/nueva">
-            <Button>+ Nueva Oferta</Button>
+          <h2 className="text-xl font-bold text-gray-900">Mis Ofertas Recientes</h2>
+          <Link href="/dashboard/empresa/ofertas">
+            <Button variant="ghost" size="sm">Ver todas →</Button>
           </Link>
         </div>
 
         <div className="grid gap-4">
           {ofertas.length === 0 ? (
             <Card className="text-center py-12">
-              <p className="text-gray-500 mb-4">No tienes ofertas publicadas</p>
+              <div className="text-5xl mb-4">📭</div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                No tienes ofertas publicadas
+              </h3>
+              <p className="text-gray-500 mb-6">
+                Crea tu primera oferta y comienza a encontrar trabajadores
+              </p>
               <Link href="/dashboard/empresa/ofertas/nueva">
-                <Button variant="outline">Crear tu primera oferta</Button>
+                <Button>Crear Primera Oferta</Button>
               </Link>
             </Card>
           ) : (
-            ofertas.map((oferta) => (
-              <Card key={oferta.id}>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="text-lg font-semibold">{oferta.titulo}</h3>
-                    <p className="text-gray-500">{oferta.categoria} • {oferta.region}</p>
-                    <p className="text-primary-600 font-medium">
-                      ${oferta.remuneration?.monto?.toLocaleString()} / {oferta.remuneration?.forma_pago}
-                    </p>
-                  </div>
-                  <span className={`px-3 py-1 rounded-full text-sm ${
-                    oferta.estado === 'ABIERTA' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
-                  }`}>
-                    {oferta.estado}
-                  </span>
-                </div>
-              </Card>
-            ))
+            ofertas.map((oferta) => {
+              const badge = getEstadoBadge(oferta.estado)
+              return (
+                <Link key={oferta.id} href={`/dashboard/empresa/ofertas/${oferta.id}`}>
+                  <Card className="hover:shadow-lg transition-all cursor-pointer">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="text-lg font-semibold text-gray-900">
+                            {oferta.titulo}
+                          </h3>
+                          <Badge variant={badge.variant}>{badge.label}</Badge>
+                        </div>
+                        <div className="flex flex-wrap gap-4 text-sm text-gray-500">
+                          <span>🏷️ {oferta.categoria}</span>
+                          <span>📍 {oferta.region}</span>
+                          <span>💰 ${oferta.remuneration?.monto?.toLocaleString()}/{oferta.remuneration?.forma_pago}</span>
+                          <span>📅 {new Date(oferta.created_at).toLocaleDateString('es-CL')}</span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-primary-500 font-medium">
+                          {oferta._count?.postulaciones || 0} candidatos
+                        </span>
+                      </div>
+                    </div>
+                  </Card>
+                </Link>
+              )
+            })
           )}
         </div>
-      </main>
+      </div>
     </div>
   )
 }
