@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
 import { Button, Input } from '@/components/ui'
 
 export default function RegisterPage() {
@@ -41,46 +40,12 @@ export default function RegisterPage() {
     if (!validate()) return
 
     setLoading(true)
-    try {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            tipo,
-          },
-        },
-      })
 
-      if (error) throw error
-      router.push('/auth/login?registered=true')
-    } catch (err: any) {
-      setError(err.message === 'User already registered' 
-        ? 'Ya tienes una cuenta, inicia sesión' 
-        : err.message)
-    } finally {
+    // Simular registro
+    setTimeout(() => {
       setLoading(false)
-    }
-  }
-
-  const handleGoogleSignup = async () => {
-    if (!aceptaTerminos) {
-      setErrors({ ...errors, terminos: 'Debes aceptar los términos para continuar' })
-      return
-    }
-    try {
-      await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/dashboard`,
-          queryParams: {
-            tipo: tipo,
-          },
-        },
-      })
-    } catch (err: any) {
-      setError(err.message)
-    }
+      router.push('/auth/login?registered=true')
+    }, 1000)
   }
 
   return (
@@ -96,6 +61,9 @@ export default function RegisterPage() {
               ? 'Crea tu perfil y recibe ofertas que coinciden contigo'
               : 'Publica ofertas y encuentra trabajadores ideales'}
           </p>
+          <div className="mt-8 inline-flex items-center gap-2 px-4 py-2 bg-white/20 rounded-lg">
+            ⚠️ Modo Demo
+          </div>
         </div>
       </div>
 
@@ -112,6 +80,9 @@ export default function RegisterPage() {
             <p className="text-gray-600 mt-2">
               Completa tus datos para comenzar
             </p>
+            <div className="mt-4 inline-flex items-center gap-2 px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-sm">
+              ⚠️ Modo Demo
+            </div>
           </div>
 
           {error && (
@@ -216,7 +187,7 @@ export default function RegisterPage() {
             type="button" 
             variant="outline" 
             fullWidth
-            onClick={handleGoogleSignup}
+            onClick={() => router.push('/dashboard/empresa')}
           >
             <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
               <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>

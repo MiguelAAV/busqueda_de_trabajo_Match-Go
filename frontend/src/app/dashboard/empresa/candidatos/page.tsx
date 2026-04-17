@@ -1,33 +1,17 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { Card, Button, Spinner, Badge, Input } from '@/components/ui'
-import { trabajadorApi } from '@/lib/api'
-import Link from 'next/link'
+import { useState } from 'react'
+import { Card, Button, Badge } from '@/components/ui'
+import { mockTrabajadores } from '@/lib/mockData'
 
 export default function CandidatosPage() {
-  const [loading, setLoading] = useState(true)
-  const [trabajadores, setTrabajadores] = useState<any[]>([])
+  const [loading, setLoading] = useState(false)
+  const [trabajadores, setTrabajadores] = useState(mockTrabajadores)
   const [filtros, setFiltros] = useState({
     region: '',
     certificacion: '',
     disponibilidad: '',
   })
-
-  useEffect(() => {
-    loadTrabajadores()
-  }, [])
-
-  const loadTrabajadores = async () => {
-    try {
-      const data = await trabajadorApi.search(filtros)
-      setTrabajadores(data || [])
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFiltros(prev => ({ ...prev, [e.target.name]: e.target.value }))
@@ -35,15 +19,20 @@ export default function CandidatosPage() {
 
   const buscar = () => {
     setLoading(true)
-    loadTrabajadores()
-  }
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Spinner size="lg" />
-      </div>
-    )
+    // Simular filtrado
+    setTimeout(() => {
+      let filtered = [...mockTrabajadores]
+      
+      if (filtros.region) {
+        filtered = filtered.filter(t => t.region === filtros.region)
+      }
+      if (filtros.certificacion) {
+        filtered = filtered.filter(t => t.certificaciones?.includes(filtros.certificacion))
+      }
+      
+      setTrabajadores(filtered)
+      setLoading(false)
+    }, 300)
   }
 
   return (
@@ -51,47 +40,56 @@ export default function CandidatosPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Buscar Candidatos</h1>
         <p className="text-gray-600 mt-1">Explora trabajadores disponibles y encuéntralos</p>
+        <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-sm">
+          ⚠️ Modo Demo - Datos de ejemplo
+        </div>
       </div>
 
       {/* Filtros */}
       <Card className="mb-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Select
-            label="Región"
-            name="region"
-            options={[
-              { value: '', label: 'Todas' },
-              { value: 'RM', label: 'Región Metropolitana' },
-              { value: 'V', label: 'Valparaíso' },
-            ]}
-            value={filtros.region}
-            onChange={handleFilterChange}
-          />
-          <Select
-            label="Certificación"
-            name="certificacion"
-            options={[
-              { value: '', label: 'Todas' },
-              { value: 'OS10', label: 'OS10 (Guardia)' },
-              { value: 'SEC', label: 'SEC (Electricista)' },
-            ]}
-            value={filtros.certificacion}
-            onChange={handleFilterChange}
-          />
-          <Select
-            label="Disponibilidad"
-            name="disponibilidad"
-            options={[
-              { value: '', label: 'Cualquiera' },
-              { value: 'full_time', label: 'Full Time' },
-              { value: 'parcial', label: 'Parcial' },
-            ]}
-            value={filtros.disponibilidad}
-            onChange={handleFilterChange}
-          />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Región</label>
+            <select
+              name="region"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+              value={filtros.region}
+              onChange={handleFilterChange}
+            >
+              <option value="">Todas</option>
+              <option value="RM">Región Metropolitana</option>
+              <option value="V">Valparaíso</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Certificación</label>
+            <select
+              name="certificacion"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+              value={filtros.certificacion}
+              onChange={handleFilterChange}
+            >
+              <option value="">Todas</option>
+              <option value="OS10">OS10 (Guardia)</option>
+              <option value="SEC">SEC (Electricista)</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Disponibilidad</label>
+            <select
+              name="disponibilidad"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+              value={filtros.disponibilidad}
+              onChange={handleFilterChange}
+            >
+              <option value="">Cualquiera</option>
+              <option value="full_time">Full Time</option>
+              <option value="parcial">Parcial</option>
+            </select>
+          </div>
           <div className="flex items-end">
-            <Button onClick={buscar} fullWidth>
-              🔍 Buscar
+            <Button onClick={buscar} fullWidth disabled={loading}>
+              {loading ? 'Buscando...' : '🔍 Buscar'}
             </Button>
           </div>
         </div>

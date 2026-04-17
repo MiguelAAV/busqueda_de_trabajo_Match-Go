@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
 import { Button, Input } from '@/components/ui'
 
 export default function LoginPage() {
@@ -12,24 +11,16 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
-
-  // Validación
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({})
 
   const validate = () => {
     const newErrors: { email?: string; password?: string } = {}
     
-    if (!email) {
-      newErrors.email = 'El email es requerido'
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
-      newErrors.email = 'Ingresa un email válido'
-    }
+    if (!email) newErrors.email = 'El email es requerido'
+    else if (!/\S+@\S+\.\S+/.test(email)) newErrors.email = 'Ingresa un email válido'
     
-    if (!password) {
-      newErrors.password = 'La contraseña es requerida'
-    } else if (password.length < 6) {
-      newErrors.password = 'Mínimo 6 caracteres'
-    }
+    if (!password) newErrors.password = 'La contraseña es requerida'
+    else if (password.length < 6) newErrors.password = 'Mínimo 6 caracteres'
     
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -42,34 +33,17 @@ export default function LoginPage() {
     if (!validate()) return
 
     setLoading(true)
-    try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      })
 
-      if (error) throw error
-      router.push('/dashboard')
-    } catch (err: any) {
-      setError(err.message === 'Invalid login credentials' 
-        ? 'Email o contraseña incorrectos' 
-        : err.message)
-    } finally {
+    // Simular login
+    setTimeout(() => {
       setLoading(false)
-    }
+      router.push('/dashboard/empresa')
+    }, 1000)
   }
 
   const handleGoogleLogin = async () => {
-    try {
-      await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/dashboard`,
-        },
-      })
-    } catch (err: any) {
-      setError(err.message)
-    }
+    // Simular Google login
+    router.push('/dashboard/empresa')
   }
 
   return (
@@ -81,6 +55,9 @@ export default function LoginPage() {
           <p className="text-xl opacity-90">
             Conecta con empresas y trabajadores temporales de forma rápida y segura
           </p>
+          <div className="mt-8 inline-flex items-center gap-2 px-4 py-2 bg-white/20 rounded-lg">
+            ⚠️ Modo Demo
+          </div>
         </div>
       </div>
 
@@ -97,6 +74,9 @@ export default function LoginPage() {
             <p className="text-gray-600 mt-2">
               Ingresa tus credenciales para continuar
             </p>
+            <div className="mt-4 inline-flex items-center gap-2 px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-sm">
+              ⚠️ Modo Demo - Usa cualquier email
+            </div>
           </div>
 
           {error && (

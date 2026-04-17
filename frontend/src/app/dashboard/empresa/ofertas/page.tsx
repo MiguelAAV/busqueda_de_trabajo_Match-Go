@@ -1,28 +1,20 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Card, Button, Spinner, Badge } from '@/components/ui'
-import { ofertaApi } from '@/lib/api'
+import { mockOfertas } from '@/lib/mockData'
 
 export default function OfertasListPage() {
   const [loading, setLoading] = useState(true)
   const [ofertas, setOfertas] = useState<any[]>([])
 
   useEffect(() => {
-    loadOfertas()
-  }, [])
-
-  const loadOfertas = async () => {
-    try {
-      const data = await ofertaApi.list()
-      setOfertas(data || [])
-    } catch (err) {
-      console.error(err)
-    } finally {
+    setTimeout(() => {
+      setOfertas(mockOfertas)
       setLoading(false)
-    }
-  }
+    }, 300)
+  }, [])
 
   const getEstadoBadge = (estado: string) => {
     const config: Record<string, { variant: 'success' | 'error' | 'warning' | 'default'; label: string }> = {
@@ -48,6 +40,9 @@ export default function OfertasListPage() {
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Mis Ofertas</h1>
           <p className="text-gray-600 mt-1">Gestiona todas tus ofertas publicadas</p>
+          <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-sm">
+            ⚠️ Modo Demo
+          </div>
         </div>
         <Link href="/dashboard/empresa/ofertas/nueva">
           <Button>+ Nueva Oferta</Button>

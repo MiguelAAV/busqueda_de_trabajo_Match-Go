@@ -1,51 +1,36 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
 import { Card, Button, Spinner, Badge } from '@/components/ui'
-import { ofertaApi } from '@/lib/api'
+import { mockOfertas } from '@/lib/mockData'
 
 export default function DashboardEmpresa() {
-  const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [ofertas, setOfertas] = useState<any[]>([])
   const [stats, setStats] = useState({ total: 0, activas: 0, postulaciones: 0 })
 
   useEffect(() => {
-    async function loadData() {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
-        router.push('/auth/login')
-        return
-      }
-
-      try {
-        const data = await ofertaApi.list()
-        setOfertas(data?.slice(0, 5) || [])
-        setStats({
-          total: data?.length || 0,
-          activas: data?.filter((o: any) => o.estado === 'ABIERTA').length || 0,
-          postulaciones: data?.reduce((acc: number, o: any) => acc + (o._count?.postulaciones || 0), 0) || 0,
-        })
-      } catch (err) {
-        console.error(err)
-      } finally {
-        setLoading(false)
-      }
-    }
-    loadData()
-  }, [router])
+    // Simular carga de datos
+    setTimeout(() => {
+      setOfertas(mockOfertas.slice(0, 5))
+      setStats({
+        total: mockOfertas.length,
+        activas: mockOfertas.filter(o => o.estado === 'ABIERTA').length,
+        postulaciones: mockOfertas.reduce((acc, o) => acc + (o._count?.postulaciones || 0), 0),
+      })
+      setLoading(false)
+    }, 500)
+  }, [])
 
   const getEstadoBadge = (estado: string) => {
-    const config = {
-      ABIERTA: { variant: 'success' as const, label: 'Activa' },
-      CERRADA: { variant: 'error' as const, label: 'Cerrada' },
-      CON_CANDIDATOS: { variant: 'warning' as const, label: 'Con Candidatos' },
-      COMPLETADA: { variant: 'default' as const, label: 'Completada' },
+    const config: Record<string, { variant: 'success' | 'error' | 'warning' | 'default'; label: string }> = {
+      ABIERTA: { variant: 'success', label: 'Activa' },
+      CERRADA: { variant: 'error', label: 'Cerrada' },
+      CON_CANDIDATOS: { variant: 'warning', label: 'Con Candidatos' },
+      COMPLETADA: { variant: 'default', label: 'Completada' },
     }
-    return config[estado as keyof typeof config] || { variant: 'default', label: estado }
+    return config[estado] || { variant: 'default', label: estado }
   }
 
   if (loading) {
@@ -62,6 +47,9 @@ export default function DashboardEmpresa() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Bienvenido</h1>
         <p className="text-gray-600 mt-1">Aquí está el resumen de tu actividad</p>
+        <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-sm">
+          ⚠️ Modo Demo - Datos de ejemplo
+        </div>
       </div>
 
       {/* Stats Cards */}
