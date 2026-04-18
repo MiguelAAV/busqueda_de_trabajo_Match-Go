@@ -2,23 +2,76 @@
 
 import { useState, useEffect } from 'react'
 import { Card, Button, Input, Badge } from '@/components/ui'
-import { mockTrabajadores } from '@/lib/mockData'
+import { supabase, db, isSupabaseConfigured } from '@/lib/supabase'
 
 export default function PerfilPage() {
   const [loading, setLoading] = useState(true)
   const [editando, setEditando] = useState(false)
   const [perfil, setPerfil] = useState<any>(null)
+  const [user, setUser] = useState<any>(null)
+  const [guardando, setGuardando] = useState(false)
+  const [mensaje, setMensaje] = useState('')
 
   useEffect(() => {
-    setTimeout(() => {
-      setPerfil(mockTrabajadores[0])
-      setLoading(false)
-    }, 300)
+    loadPerfil()
   }, [])
+
+  const loadPerfil = async () => {
+    try {
+      if (isSupabaseConfigured && supabase) {
+        const { data: { user: authUser } } = await supabase.auth.getUser()
+        
+        if (authUser) {
+          setUser(authUser)
+          const perfilData = await db.getPerfilTrabajador(authUser.id)
+          setPerfil(perfilData)
+        }
+      } else {
+        const { mockTrabajadores } = await import('@/lib/mockData')
+        setPerfil(mockTrabajadores[0])
+      }
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     setPerfil((prev: any) => ({ ...prev, [name]: value }))
+  }
+
+  const handleGuardar = async () => {
+    setGuardando(true)
+    try {
+      if (isSupabaseConfigured && supabase && perfil) {
+        const { error } = await supabase
+          .from('trabajador')
+          .update({
+            nombre_completo: perfil.nombre_completo,
+            telefono: perfil.telefono,
+            region: perfil.region,
+            comuna: perfil.comuna,
+            movilizacion_propia: perfil.movilizacion_propia,
+            disponibilidad: perfil.disponibilidad,
+            pretension_renta: perfil.pretension_renta,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', perfil.id)
+
+        if (error) throw error
+        
+        setMensaje('✅ Perfil guardado exitosamente')
+        setTimeout(() => setMensaje(''), 3000)
+      }
+      setEditando(false)
+    } catch (err: any) {
+      console.error(err)
+      setMensaje('❌ Error al guardar: ' + err.message)
+    } finally {
+      setGuardando(false)
+    }
   }
 
   if (loading) {
@@ -29,23 +82,41 @@ export default function PerfilPage() {
     )
   }
 
+  if (!perfil) {
+    return (
+      <div className="text-center py-20">
+        <h2 className="text-2xl font-bold text-gray-900">Perfil no encontrado</h2>
+        <p className="text-gray-500 mt-2">Parece que no tienes un perfil creado</p>
+      </div>
+    )
+  }
+
   return (
     <div>
       <div className="flex justify-between items-start mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Mi Perfil</h1>
           <p className="text-gray-600 mt-1">Gestiona tu información personal y profesional</p>
-          <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-sm">
-            ⚠️ Modo Demo
-          </div>
+          {!isSupabaseConfigured && (
+            <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-sm">
+              ⚠️ Modo Demo
+            </div>
+          )}
         </div>
         <Button 
           variant={editando ? 'primary' : 'outline'}
-          onClick={() => setEditando(!editando)}
+          onClick={() => editando ? handleGuardar() : setEditando(true)}
+          loading={guardando}
         >
           {editando ? 'Guardar Cambios' : 'Editar Perfil'}
         </Button>
       </div>
+
+      {mensaje && (
+        <div className={`p-4 rounded-lg mb-6 ${mensaje.includes('✅') ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
+          {mensaje}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Info Personal */}
@@ -68,7 +139,7 @@ export default function PerfilPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">RUT</label>
-                <p className="text-gray-900">{perfil?.rut}</p>
+                <p className="text-gray-900">{perfil?.rut || 'No registrado'}</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
@@ -126,7 +197,13 @@ export default function PerfilPage() {
                     type="number"
                     name="min"
                     value={perfil?.pretension_renta?.min || ''}
-                    onChange={handleChange}
+                    onChange={(e) => {
+                      const min = parseInt(e.target.value)
+                      setPerfil((prev: any) => ({
+                        ...prev,
+                        pretension_renta: { ...prev.pretension_renta, min }
+                      }))
+                    }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                   />
                 ) : (
@@ -142,7 +219,13 @@ export default function PerfilPage() {
                     type="number"
                     name="max"
                     value={perfil?.pretension_renta?.max || ''}
-                    onChange={handleChange}
+                    onChange={(e) => {
+                      const max = parseInt(e.target.value)
+                      setPerfil((prev: any) => ({
+                        ...prev,
+                        pretension_renta: { ...prev.pretension_renta, max }
+                      }))
+                    }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                   />
                 ) : (
@@ -159,18 +242,19 @@ export default function PerfilPage() {
             {perfil?.experiencia?.length > 0 ? (
               perfil.experiencia.map((exp: any, i: number) => (
                 <div key={i} className="border-b last:border-b-0 pb-4 last:pb-0 mb-4 last:mb-0">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="font-medium text-gray-900">{exp.cargo}</p>
-                      <p className="text-gray-500">{exp.empresa}</p>
-                      <p className="text-sm text-gray-400">{exp.periodo}</p>
-                    </div>
-                  </div>
+                  <p className="font-medium text-gray-900">{exp.cargo}</p>
+                  <p className="text-gray-500">{exp.empresa}</p>
+                  <p className="text-sm text-gray-400">{exp.periodo}</p>
                   <p className="text-sm text-gray-600 mt-2">{exp.descripcion}</p>
                 </div>
               ))
             ) : (
               <p className="text-gray-500">Sin experiencia registrada</p>
+            )}
+            {editando && (
+              <Button variant="outline" size="sm" className="mt-4">
+                + Agregar Experiencia
+              </Button>
             )}
           </Card>
         </div>
@@ -196,11 +280,37 @@ export default function PerfilPage() {
           {/* Certificaciones */}
           <Card>
             <h3 className="font-semibold mb-3">Certificaciones</h3>
-            <div className="flex flex-wrap gap-2">
-              {perfil?.certificaciones?.map((cert: string, i: number) => (
-                <Badge key={i} variant="info">{cert}</Badge>
-              ))}
-            </div>
+            {editando ? (
+              <div className="space-y-2">
+                {['OS10', 'Primeros Auxilios', 'SEC', 'Manipulación de Alimentos'].map(cert => (
+                  <label key={cert} className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={perfil?.certificaciones?.includes(cert)}
+                      onChange={(e) => {
+                        const certs = perfil?.certificaciones || []
+                        const newCerts = e.target.checked
+                          ? [...certs, cert]
+                          : certs.filter((c: string) => c !== cert)
+                        setPerfil((prev: any) => ({ ...prev, certificaciones: newCerts }))
+                      }}
+                      className="w-4 h-4"
+                    />
+                    <span>{cert}</span>
+                  </label>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {perfil?.certificaciones?.length > 0 ? (
+                  perfil.certificaciones.map((cert: string, i: number) => (
+                    <Badge key={i} variant="info">{cert}</Badge>
+                  ))
+                ) : (
+                  <p className="text-gray-500">Sin certificaciones</p>
+                )}
+              </div>
+            )}
           </Card>
 
           {/* Disponibilidad */}
@@ -216,13 +326,16 @@ export default function PerfilPage() {
           <Card>
             <h3 className="font-semibold mb-3">Otros</h3>
             <div className="space-y-2 text-sm">
-              <p className="flex items-center gap-2">
-                🚗{' '}
-                <span>Movilización propia:</span>
-                <span className="font-medium">
-                  {perfil?.movilizacion_propia ? 'Sí' : 'No'}
-                </span>
-              </p>
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={perfil?.movilizacion_propia || false}
+                  onChange={(e) => setPerfil((prev: any) => ({ ...prev, movilizacion_propia: e.target.checked }))}
+                  disabled={!editando}
+                  className="w-4 h-4"
+                />
+                <span>Movilización propia</span>
+              </label>
             </div>
           </Card>
         </div>

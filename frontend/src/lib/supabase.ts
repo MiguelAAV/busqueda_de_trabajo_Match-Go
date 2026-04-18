@@ -84,6 +84,15 @@ export const db = {
     return data
   },
 
+  // Empresas para lista
+  getEmpresas: async () => {
+    if (!supabase) return []
+    const { data } = await supabase
+      .from('empresa')
+      .select('*')
+    return data || []
+  },
+
   // Postulaciones
   getPostulaciones: async (userId: string, tipo: 'empresa' | 'trabajador') => {
     if (!supabase) return []
