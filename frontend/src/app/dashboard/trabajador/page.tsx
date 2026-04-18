@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Card, Button, Spinner, Badge } from '@/components/ui'
-import { mockOfertas, mockPostulaciones } from '@/lib/mockData'
+import { db, isSupabaseConfigured } from '@/lib/supabase'
 
 export default function DashboardTrabajador() {
   const [loading, setLoading] = useState(true)
@@ -11,16 +11,34 @@ export default function DashboardTrabajador() {
   const [stats, setStats] = useState({ disponibles: 0, postuladas: 0, aceptadas: 0 })
 
   useEffect(() => {
-    setTimeout(() => {
-      setOfertas(mockOfertas.filter(o => o.estado === 'ABIERTA'))
-      setStats({
-        disponibles: mockOfertas.filter(o => o.estado === 'ABIERTA').length,
-        postuladas: mockPostulaciones.length,
-        aceptadas: mockPostulaciones.filter(p => p.estado === 'ACEPTADO').length,
-      })
-      setLoading(false)
-    }, 500)
+    loadData()
   }, [])
+
+  const loadData = async () => {
+    try {
+      if (isSupabaseConfigured) {
+        const data = await db.getOfertas({ estado: 'ABIERTA' })
+        setOfertas(data?.slice(0, 5) || [])
+        setStats({
+          disponibles: data?.length || 0,
+          postuladas: 0,
+          aceptadas: 0,
+        })
+      } else {
+        const { mockOfertas, mockPostulaciones } = await import('@/lib/mockData')
+        setOfertas(mockOfertas.filter(o => o.estado === 'ABIERTA').slice(0, 5))
+        setStats({
+          disponibles: mockOfertas.filter(o => o.estado === 'ABIERTA').length,
+          postuladas: mockPostulaciones.length,
+          aceptadas: mockPostulaciones.filter(p => p.estado === 'ACEPTADO').length,
+        })
+      }
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -36,9 +54,11 @@ export default function DashboardTrabajador() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Bienvenido</h1>
         <p className="text-gray-600 mt-1">Encuentra trabajos temporales que matchean contigo</p>
-        <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-sm">
-          ⚠️ Modo Demo - Datos de ejemplo
-        </div>
+        {!isSupabaseConfigured && (
+          <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-sm">
+            ⚠️ Modo Demo
+          </div>
+        )}
       </div>
 
       {/* Stats Cards */}
@@ -132,7 +152,7 @@ export default function DashboardTrabajador() {
               </p>
             </Card>
           ) : (
-            ofertas.slice(0, 5).map((oferta) => (
+            ofertas.map((oferta) => (
               <Link key={oferta.id} href={`/dashboard/trabajador/ofertas/${oferta.id}`}>
                 <Card className="hover:shadow-lg transition-all cursor-pointer">
                   <div className="flex justify-between items-start">

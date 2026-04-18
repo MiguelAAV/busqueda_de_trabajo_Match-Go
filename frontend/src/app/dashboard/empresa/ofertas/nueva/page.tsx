@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Card, Button, Input, Textarea } from '@/components/ui'
+import { Card, Button } from '@/components/ui'
+import { db, isSupabaseConfigured } from '@/lib/supabase'
 
 const categorias = [
   { value: '', label: 'Selecciona una categoría' },
@@ -59,12 +60,46 @@ export default function NuevaOfertaPage() {
     e.preventDefault()
     setLoading(true)
 
-    // Simular guardado
-    setTimeout(() => {
-      setLoading(false)
+    try {
+      if (isSupabaseConfigured) {
+        // Obtener empresa del usuario actual
+        const { data: { user } } = await import('@/lib/supabase').then(m => m.supabase?.auth.getUser())
+        
+        if (!user) throw new Error('No hay sesión')
+
+        // Obtener perfil de empresa
+        const empresa = await db.getPerfilEmpresa(user.id)
+        
+        if (!empresa) throw new Error('Perfil de empresa no encontrado')
+
+        // Crear oferta
+        await db.createOferta({
+          empresa_id: empresa.id,
+          titulo: form.titulo,
+          categoria: form.categoria,
+          descripcion: form.descripcion,
+          region: form.region,
+          comuna: form.comuna,
+          fecha_inicio: new Date().toISOString(),
+          jornada: form.jornada,
+          remuneration: {
+            monto: parseInt(form.remuneration_monto),
+            forma_pago: form.remuneration_forma_pago,
+          },
+          tipo_contrato: 'PLAZO_FIJO',
+          requisitos: {},
+          estado: 'ABIERTA',
+        })
+      }
+
       setSuccess(true)
       setTimeout(() => router.push('/dashboard/empresa'), 1500)
-    }, 1000)
+    } catch (err: any) {
+      console.error('Error:', err)
+      alert(err.message || 'Error al crear la oferta')
+    } finally {
+      setLoading(false)
+    }
   }
 
   if (success) {
@@ -84,9 +119,11 @@ export default function NuevaOfertaPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Publicar Nueva Oferta</h1>
         <p className="text-gray-600 mt-1">Completa los detalles del trabajo que necesitas</p>
-        <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-sm">
-          ⚠️ Modo Demo
-        </div>
+        {!isSupabaseConfigured && (
+          <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-sm">
+            ⚠️ Modo Demo
+          </div>
+        )}
       </div>
 
       <form onSubmit={handleSubmit}>

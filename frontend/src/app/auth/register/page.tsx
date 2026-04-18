@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { supabase, isSupabaseConfigured } from '@/lib/supabase'
 import { Button, Input } from '@/components/ui'
 
 export default function RegisterPage() {
@@ -12,6 +13,7 @@ export default function RegisterPage() {
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [tipo, setTipo] = useState<'EMPRESA' | 'TRABAJADOR'>('TRABAJADOR')
+  const [nombre, setNombre] = useState('')
   const [aceptaTerminos, setAceptaTerminos] = useState(false)
   const [error, setError] = useState('')
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -19,6 +21,7 @@ export default function RegisterPage() {
   const validate = () => {
     const newErrors: Record<string, string> = {}
     
+    if (!nombre) newErrors.nombre = 'El nombre es requerido'
     if (!email) newErrors.email = 'El email es requerido'
     else if (!/\S+@\S+\.\S+/.test(email)) newErrors.email = 'Email inválido'
     
@@ -41,16 +44,71 @@ export default function RegisterPage() {
 
     setLoading(true)
 
-    // Simular registro - redirigir según tipo
-    setTimeout(() => {
-      setLoading(false)
-      // En modo demo,-ir directamente al dashboard según tipo
-      if (tipo === 'EMPRESA') {
-        router.push('/dashboard/empresa')
+    try {
+      if (isSupabaseConfigured && supabase) {
+        // 1. Crear usuario en Auth
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              nombre,
+              tipo,
+            },
+          },
+        })
+
+        if (authError) throw authError
+
+        // 2. Crear registro en tabla usuario
+        if (authData.user) {
+          const { error: userError } = await supabase
+            .from('usuario')
+            .insert({
+              id: authData.user.id,
+              email,
+              nombre,
+              tipo,
+            })
+
+          if (userError) throw userError
+
+          // 3. Crear perfil según tipo
+          if (tipo === 'EMPRESA') {
+            await supabase.from('empresa').insert({
+              usuario_id: authData.user.id,
+              razon_social: nombre,
+              rut: '',
+              direccion: '',
+              telefono: '',
+              contacto_nombre: nombre,
+              region: 'RM',
+            })
+          } else {
+            await supabase.from('trabajador').insert({
+              usuario_id: authData.user.id,
+              nombre_completo: nombre,
+              rut: '',
+              telefono: '',
+              region: 'RM',
+              comuna: '',
+            })
+          }
+        }
+
+        router.push('/auth/login?registered=true')
       } else {
-        router.push('/dashboard/trabajador')
+        // Modo demo
+        setTimeout(() => {
+          router.push('/dashboard/' + (tipo === 'EMPRESA' ? 'empresa' : 'trabajador'))
+        }, 1000)
       }
-    }, 1000)
+    } catch (err: any) {
+      console.error('Error:', err)
+      setError(err.message || 'Error al registrarse')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -66,9 +124,11 @@ export default function RegisterPage() {
               ? 'Crea tu perfil y recibe ofertas que coinciden contigo'
               : 'Publica ofertas y encuentra trabajadores ideales'}
           </p>
-          <div className="mt-8 inline-flex items-center gap-2 px-4 py-2 bg-white/20 rounded-lg">
-            ⚠️ Modo Demo
-          </div>
+          {!isSupabaseConfigured && (
+            <div className="mt-8 inline-flex items-center gap-2 px-4 py-2 bg-white/20 rounded-lg">
+              ⚠️ Modo Demo
+            </div>
+          )}
         </div>
       </div>
 
@@ -85,9 +145,6 @@ export default function RegisterPage() {
             <p className="text-gray-600 mt-2">
               Completa tus datos para comenzar
             </p>
-            <div className="mt-4 inline-flex items-center gap-2 px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-sm">
-              ⚠️ Modo Demo
-            </div>
           </div>
 
           {error && (
@@ -127,6 +184,16 @@ export default function RegisterPage() {
           </div>
 
           <form onSubmit={handleRegister} className="space-y-4">
+            <Input
+              label="Nombre completo"
+              type="text"
+              placeholder="Tu nombre"
+              value={nombre}
+              onChange={(e) => setNombre(e.target.value)}
+              error={errors.nombre}
+              autoComplete="name"
+            />
+            
             <Input
               label="Email"
               type="email"
@@ -192,7 +259,7 @@ export default function RegisterPage() {
             type="button" 
             variant="outline" 
             fullWidth
-            onClick={() => router.push('/dashboard/empresa')}
+            onClick={handleRegister}
           >
             <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
               <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>

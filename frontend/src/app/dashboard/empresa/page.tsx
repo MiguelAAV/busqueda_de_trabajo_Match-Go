@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Card, Button, Spinner, Badge } from '@/components/ui'
-import { mockOfertas } from '@/lib/mockData'
+import { db, isSupabaseConfigured } from '@/lib/supabase'
 
 export default function DashboardEmpresa() {
   const [loading, setLoading] = useState(true)
@@ -11,17 +11,35 @@ export default function DashboardEmpresa() {
   const [stats, setStats] = useState({ total: 0, activas: 0, postulaciones: 0 })
 
   useEffect(() => {
-    // Simular carga de datos
-    setTimeout(() => {
-      setOfertas(mockOfertas.slice(0, 5))
-      setStats({
-        total: mockOfertas.length,
-        activas: mockOfertas.filter(o => o.estado === 'ABIERTA').length,
-        postulaciones: mockOfertas.reduce((acc, o) => acc + (o._count?.postulaciones || 0), 0),
-      })
-      setLoading(false)
-    }, 500)
+    loadData()
   }, [])
+
+  const loadData = async () => {
+    try {
+      if (isSupabaseConfigured) {
+        const data = await db.getOfertas()
+        setOfertas(data?.slice(0, 5) || [])
+        setStats({
+          total: data?.length || 0,
+          activas: data?.filter((o: any) => o.estado === 'ABIERTA').length || 0,
+          postulaciones: data?.reduce((acc: number, o: any) => acc + (o.postulaciones?.[0]?.count || 0), 0) || 0,
+        })
+      } else {
+        // Modo demo - importar mock
+        const { mockOfertas } = await import('@/lib/mockData')
+        setOfertas(mockOfertas.slice(0, 5))
+        setStats({
+          total: mockOfertas.length,
+          activas: mockOfertas.filter(o => o.estado === 'ABIERTA').length,
+          postulaciones: mockOfertas.reduce((acc, o) => acc + (o._count?.postulaciones || 0), 0),
+        })
+      }
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const getEstadoBadge = (estado: string) => {
     const config: Record<string, { variant: 'success' | 'error' | 'warning' | 'default'; label: string }> = {
@@ -47,9 +65,11 @@ export default function DashboardEmpresa() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Bienvenido</h1>
         <p className="text-gray-600 mt-1">Aquí está el resumen de tu actividad</p>
-        <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-sm">
-          ⚠️ Modo Demo - Datos de ejemplo
-        </div>
+        {!isSupabaseConfigured && (
+          <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-sm">
+            ⚠️ Modo Demo
+          </div>
+        )}
       </div>
 
       {/* Stats Cards */}
@@ -168,7 +188,7 @@ export default function DashboardEmpresa() {
                       </div>
                       <div className="text-right">
                         <span className="text-primary-500 font-medium">
-                          {oferta._count?.postulaciones || 0} candidatos
+                          {oferta.postulaciones?.[0]?.count || 0} candidatos
                         </span>
                       </div>
                     </div>

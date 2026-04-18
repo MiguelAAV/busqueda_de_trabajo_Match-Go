@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { supabase, isSupabaseConfigured } from '@/lib/supabase'
 import { Button, Input } from '@/components/ui'
 
 export default function LoginPage() {
@@ -35,38 +36,76 @@ export default function LoginPage() {
 
     setLoading(true)
 
-    // Simular login - redirigir según tipo seleccionado
-    setTimeout(() => {
-      setLoading(false)
-      if (tipoSeleccionado === 'empresa') {
-        router.push('/dashboard/empresa')
+    try {
+      if (isSupabaseConfigured && supabase) {
+        const { data, error: authError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        })
+
+        if (authError) throw authError
+
+        // Verificar tipo de usuario
+        if (data.user) {
+          const { data: usuario } = await supabase
+            .from('usuario')
+            .select('tipo')
+            .eq('id', data.user.id)
+            .single()
+
+          if (usuario?.tipo === 'EMPRESA') {
+            router.push('/dashboard/empresa')
+          } else {
+            router.push('/dashboard/trabajador')
+          }
+        }
       } else {
-        router.push('/dashboard/trabajador')
+        // Modo demo
+        setTimeout(() => {
+          router.push('/dashboard/' + (tipoSeleccionado === 'empresa' ? 'empresa' : 'trabajador'))
+        }, 1000)
       }
-    }, 1000)
+    } catch (err: any) {
+      console.error('Error:', err)
+      setError(err.message === 'Invalid login credentials' 
+        ? 'Email o contraseña incorrectos' 
+        : err.message)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleGoogleLogin = async () => {
-    // Simular Google login - usar el tipo seleccionado
-    if (tipoSeleccionado === 'empresa') {
-      router.push('/dashboard/empresa')
-    } else {
-      router.push('/dashboard/trabajador')
+    try {
+      if (isSupabaseConfigured && supabase) {
+        await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: `${window.location.origin}/dashboard`,
+          },
+        })
+      } else {
+        router.push('/dashboard/' + (tipoSeleccionado === 'empresa' ? 'empresa' : 'trabajador'))
+      }
+    } catch (err: any) {
+      setError(err.message)
     }
   }
 
   return (
     <div className="min-h-screen flex">
-      {/* Imagen lateral - solo en desktop */}
+      {/* Imagen lateral */}
       <div className="hidden lg:flex lg:w-1/2 bg-primary-500 items-center justify-center p-12">
         <div className="text-white text-center">
           <h2 className="text-4xl font-bold mb-4">Bienvenido de vuelta</h2>
           <p className="text-xl opacity-90">
             Conecta con empresas y trabajadores temporales de forma rápida y segura
           </p>
-          <div className="mt-8 inline-flex items-center gap-2 px-4 py-2 bg-white/20 rounded-lg">
-            ⚠️ Modo Demo
-          </div>
+          {!isSupabaseConfigured && (
+            <div className="mt-8 inline-flex items-center gap-2 px-4 py-2 bg-white/20 rounded-lg">
+              ⚠️ Modo Demo
+            </div>
+          )}
         </div>
       </div>
 
@@ -83,9 +122,6 @@ export default function LoginPage() {
             <p className="text-gray-600 mt-2">
               Ingresa tus credenciales para continuar
             </p>
-            <div className="mt-4 inline-flex items-center gap-2 px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-sm">
-              ⚠️ Modo Demo - Selecciona tu tipo
-            </div>
           </div>
 
           {/* Selector de tipo */}
@@ -150,7 +186,7 @@ export default function LoginPage() {
             </div>
 
             <Button type="submit" fullWidth loading={loading}>
-              Iniciar Sesión como {tipoSeleccionado === 'empresa' ? 'Empresa' : 'Trabajador'}
+              Iniciar Sesión
             </Button>
           </form>
 
