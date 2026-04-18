@@ -41,10 +41,15 @@ export default function RegisterPage() {
 
     setLoading(true)
 
-    // Simular registro
+    // Simular registro - redirigir según tipo
     setTimeout(() => {
       setLoading(false)
-      router.push('/auth/login?registered=true')
+      // En modo demo,-ir directamente al dashboard según tipo
+      if (tipo === 'EMPRESA') {
+        router.push('/dashboard/empresa')
+      } else {
+        router.push('/dashboard/trabajador')
+      }
     }, 1000)
   }
 

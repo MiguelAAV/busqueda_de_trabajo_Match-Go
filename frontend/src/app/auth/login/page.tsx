@@ -10,6 +10,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [tipoSeleccionado, setTipoSeleccionado] = useState<'empresa' | 'trabajador'>('trabajador')
   const [error, setError] = useState('')
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({})
 
@@ -34,16 +35,24 @@ export default function LoginPage() {
 
     setLoading(true)
 
-    // Simular login
+    // Simular login - redirigir según tipo seleccionado
     setTimeout(() => {
       setLoading(false)
-      router.push('/dashboard/empresa')
+      if (tipoSeleccionado === 'empresa') {
+        router.push('/dashboard/empresa')
+      } else {
+        router.push('/dashboard/trabajador')
+      }
     }, 1000)
   }
 
   const handleGoogleLogin = async () => {
-    // Simular Google login
-    router.push('/dashboard/empresa')
+    // Simular Google login - usar el tipo seleccionado
+    if (tipoSeleccionado === 'empresa') {
+      router.push('/dashboard/empresa')
+    } else {
+      router.push('/dashboard/trabajador')
+    }
   }
 
   return (
@@ -75,8 +84,36 @@ export default function LoginPage() {
               Ingresa tus credenciales para continuar
             </p>
             <div className="mt-4 inline-flex items-center gap-2 px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-sm">
-              ⚠️ Modo Demo - Usa cualquier email
+              ⚠️ Modo Demo - Selecciona tu tipo
             </div>
+          </div>
+
+          {/* Selector de tipo */}
+          <div className="grid grid-cols-2 gap-3 mb-6">
+            <button
+              type="button"
+              onClick={() => setTipoSeleccionado('trabajador')}
+              className={`p-3 rounded-xl border-2 transition-all ${
+                tipoSeleccionado === 'trabajador' 
+                  ? 'border-primary-500 bg-primary-50 text-primary-700' 
+                  : 'border-gray-200 text-gray-600 hover:border-gray-300'
+              }`}
+            >
+              <div className="text-xl mb-1">👷</div>
+              <div className="font-medium text-sm">Trabajador</div>
+            </button>
+            <button
+              type="button"
+              onClick={() => setTipoSeleccionado('empresa')}
+              className={`p-3 rounded-xl border-2 transition-all ${
+                tipoSeleccionado === 'empresa' 
+                  ? 'border-primary-500 bg-primary-50 text-primary-700' 
+                  : 'border-gray-200 text-gray-600 hover:border-gray-300'
+              }`}
+            >
+              <div className="text-xl mb-1">🏢</div>
+              <div className="font-medium text-sm">Empresa</div>
+            </button>
           </div>
 
           {error && (
@@ -113,7 +150,7 @@ export default function LoginPage() {
             </div>
 
             <Button type="submit" fullWidth loading={loading}>
-              Iniciar Sesión
+              Iniciar Sesión como {tipoSeleccionado === 'empresa' ? 'Empresa' : 'Trabajador'}
             </Button>
           </form>
 
