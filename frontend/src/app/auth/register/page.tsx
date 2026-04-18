@@ -46,7 +46,9 @@ export default function RegisterPage() {
 
     try {
       if (isSupabaseConfigured && supabase) {
-        // 1. Crear usuario en Auth
+        console.log('Registrando en Supabase...', { email, tipo, nombre })
+        
+        // 1. Crear usuario en Auth (sin verificación de email para demo)
         const { data: authData, error: authError } = await supabase.auth.signUp({
           email,
           password,
@@ -55,10 +57,16 @@ export default function RegisterPage() {
               nombre,
               tipo,
             },
+            emailRedirectTo: `${window.location.origin}/dashboard`,
           },
         })
 
-        if (authError) throw authError
+        if (authError) {
+          console.error('Auth error:', authError)
+          throw authError
+        }
+
+        console.log('Auth user created:', authData.user)
 
         // 2. Crear registro en tabla usuario
         if (authData.user) {
@@ -71,11 +79,15 @@ export default function RegisterPage() {
               tipo,
             })
 
-          if (userError) throw userError
+          if (userError) {
+            console.error('User insert error:', userError)
+            throw userError
+          }
+          console.log('Usuario insertado en tabla')
 
           // 3. Crear perfil según tipo
           if (tipo === 'EMPRESA') {
-            await supabase.from('empresa').insert({
+            const { error: empresaError } = await supabase.from('empresa').insert({
               usuario_id: authData.user.id,
               razon_social: nombre,
               rut: '',
@@ -84,8 +96,9 @@ export default function RegisterPage() {
               contacto_nombre: nombre,
               region: 'RM',
             })
+            console.log('Empresa insert error:', empresaError)
           } else {
-            await supabase.from('trabajador').insert({
+            const { error: trabajadorError } = await supabase.from('trabajador').insert({
               usuario_id: authData.user.id,
               nombre_completo: nombre,
               rut: '',
@@ -93,6 +106,7 @@ export default function RegisterPage() {
               region: 'RM',
               comuna: '',
             })
+            console.log('Trabajador insert error:', trabajadorError)
           }
         }
 
