@@ -21,7 +21,26 @@ export default function PerfilPage() {
         const { data: { user } } = await supabase.auth.getUser()
         
         if (user) {
-          const perfilData = await db.getPerfilEmpresa(user.id)
+          let perfilData = await db.getPerfilEmpresa(user.id)
+          
+          if (!perfilData) {
+            // Crear perfil automáticamente si no existe
+            const { error: createError } = await supabase
+              .from('empresa')
+              .insert({
+                usuario_id: user.id,
+                razon_social: user.user_metadata?.nombre || 'Mi Empresa',
+                rut: '',
+                direccion: '',
+                telefono: '',
+                contacto_nombre: user.user_metadata?.nombre || '',
+                region: 'RM',
+              })
+            
+            if (!createError) {
+              perfilData = await db.getPerfilEmpresa(user.id)
+            }
+          }
           setPerfil(perfilData)
         }
       }

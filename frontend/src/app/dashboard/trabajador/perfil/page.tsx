@@ -24,7 +24,29 @@ export default function PerfilPage() {
         if (authUser) {
           setUser(authUser)
           const perfilData = await db.getPerfilTrabajador(authUser.id)
-          setPerfil(perfilData)
+          
+          if (!perfilData) {
+            // Crear perfil automáticamente si no existe
+            const { error: createError } = await supabase
+              .from('trabajador')
+              .insert({
+                usuario_id: authUser.id,
+                nombre_completo: authUser.user_metadata?.nombre || '',
+                rut: '',
+                telefono: '',
+                region: 'RM',
+                comuna: '',
+                disponibilidad: { dias: [], horarios: [] },
+                pretension_renta: { min: 0, max: 0, tipo: 'mes' },
+              })
+            
+            if (!createError) {
+              const newPerfil = await db.getPerfilTrabajador(authUser.id)
+              setPerfil(newPerfil)
+            }
+          } else {
+            setPerfil(perfilData)
+          }
         }
       } else {
         const { mockTrabajadores } = await import('@/lib/mockData')
