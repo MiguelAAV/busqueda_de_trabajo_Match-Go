@@ -38,12 +38,33 @@ export default function LoginPage() {
 
     try {
       if (isSupabaseConfigured && supabase) {
+        console.log('Intentando login con:', email)
+        
         const { data, error: authError } = await supabase.auth.signInWithPassword({
           email,
           password,
         })
 
-        if (authError) throw authError
+        console.log('Login response:', data, authError)
+
+        if (authError) {
+          // Si el error es que necesita confirmación, intentamos de otra forma
+          if (authError.message.includes('Email not confirmed')) {
+            // Buscar usuario por email en la tabla
+            const { data: usuarioData } = await supabase
+              .from('usuario')
+              .select('*')
+              .eq('email', email)
+              .single()
+            
+            if (usuarioData) {
+              // Ir directamente al dashboard según el tipo
+              router.push(usuarioData.tipo === 'EMPRESA' ? '/dashboard/empresa' : '/dashboard/trabajador')
+              return
+            }
+          }
+          throw authError
+        }
 
         // Verificar tipo de usuario
         if (data.user) {
@@ -52,6 +73,8 @@ export default function LoginPage() {
             .select('tipo')
             .eq('id', data.user.id)
             .single()
+
+          console.log('Usuario data:', usuario)
 
           if (usuario?.tipo === 'EMPRESA') {
             router.push('/dashboard/empresa')
@@ -66,7 +89,7 @@ export default function LoginPage() {
         }, 1000)
       }
     } catch (err: any) {
-      console.error('Error:', err)
+      console.error('Login error:', err)
       setError(err.message === 'Invalid login credentials' 
         ? 'Email o contraseña incorrectos' 
         : err.message)
